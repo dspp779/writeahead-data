@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 from __future__ import division
-from collections import Counter, defaultdict
-from itertools import groupby, imap
-import operator, sys
-import fileinput
-import json
-from itertools import islice
+
+import sys, fileinput
 import operator
+import json
+
+from collections import Counter, defaultdict, OrderedDict
+from itertools import groupby, imap, islice
 from math import sqrt
 
 # pv citeseerx.sents.tagged.h.10000.txt | sh local_mapreduce.sh 0.8m 10 'python col.map.py' 'python col.reduce.py' result_dir
 
-from collections import OrderedDict
 
 class OrderedDefaultDict(OrderedDict):
     def __init__(self, default_factory=None, *args, **kwargs):
@@ -73,40 +72,39 @@ for word, lines in groupby(fileinput.input(), key=line_to_word): # fileinput.inp
 
     #print 'Handling %s'%word
     #print
-    
+
     patInstances = [ (pat, list(instances)) for pat, instances in groupby(lines, key=line_to_pat) ]
-    patCounts = dict([ (pat, len(instances)) for pat, instances in patInstances ])
+    patCounts = dict( (pat, len(instances)) for pat, instances in patInstances )
     patInstances = dict(patInstances)
-    
     patterns = wordPat()
     patterns.update( patCounts )
     patterns.calc_metrics()
-    goodPats = sorted([ (x, y) for x, y in patterns.gen_goodpat() ], key=lambda x:x[1], reverse=True)
+
+    goodPats = sorted( (x, y) for x, y in patterns.gen_goodpat() , key=lambda x:x[1], reverse=True)
     
     if goodPats:
         #print
         #print '%s (%s)'%(word, sum([ count for _, count in goodPats])) #, goodPats
         #print
-        table[word] = [ sum([ count for _, count in goodPats]) ]
+        table[word] = [ sum( count for _, count in goodPats ) ]
     else:
         continue
         
     for pat, count in goodPats[:7]:
         #print '\t*1*%s (%s)'%(pat, count)
         colInstances = [ (col, list(instances)) for col, instances in groupby(patInstances[pat], key=line_to_col) ]
-        colCounts = dict([ (col, len(instances)) for col, instances in colInstances ])
+        colCounts = dict( (col, len(instances)) for col, instances in colInstances )
         colInstances = dict(colInstances)
-
         patterns = wordPat()
         patterns.update( colCounts )
         patterns.calc_metrics()
-        goodCols = sorted([ (col, count) for col, count in patterns.gen_goodpat() ], key=lambda x:x[1], reverse=True)
+        goodCols = sorted( (col, count) for col, count in patterns.gen_goodpat() , key=lambda x:x[1], reverse=True)
         #print '\t*2*%s (%s)'%(pat, patCounts[pat]), goodCols
 
         if not goodCols:
             #print '\t%s (%s)'%(pat, patCounts[pat]) #, goodCols
             #print
-            bestngram = max([ (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) ])
+            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) ])
             #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
             table[word] += [ [pat, patCounts[pat], [(bestngram[1], colCounts[col], bestngram[0])]] ]
             #print
@@ -120,8 +118,6 @@ for word, lines in groupby(fileinput.input(), key=line_to_word): # fileinput.inp
         #print
         
 #print table
-
-import json
 print json.dumps(table)
 
 '''with open('test.json.txt', 'w') as outfile:
