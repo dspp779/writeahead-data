@@ -87,10 +87,10 @@ input_lines = 'I have great difficulty in understanding him .\tI have great diff
 aklWords = {x:True for x in set(re.findall('[a-z_]+', (file('data.akl.all.txt').read()+file('data.teufel.all.txt').read()).lower())) }
 #print >> sys.stderr, "%s words in aklWords ..."%len(aklWords)
 
-i = 0
+
 #for line in input_lines: # fileinput.input():
-for line in fileinput.input():
-    line = line.replace('/', '|'); i = i+1
+for i, line in enumerate(fileinput.input()):
+    line = line.decode('utf-8').replace('/', '|')
     sentNum, words, lemmas, poss, chunks = [i]+line.strip().split('\t')
     #words, lemmas, poss, chunks = line.strip().split('\t')
     words, lemmas, poss, chunks = map(methodcaller('split'), (words[0].lower()+words[1:], lemmas[0].lower()+lemmas[1:], poss, chunks))
@@ -118,15 +118,16 @@ for line in fileinput.input():
                 #print '{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), genNgram(chunked_text[0][0:], start, start+len(chunked_text[0][0:])),\
                 #                                           sentNum, start, start+len(chunked_text[0][0:]), )
                 try:
-                    history = unchunked_text[start-1][0].split('/')[0]
-                    history = history+' ' if history.isalpha() else ''
+                    # history = unchunked_text[start-1][0].split('/')[0]
+                    # history = history+' ' if history.isalpha() else ''
+                    history = ' '.join(words[:start])+' '
                     lookahead = unchunked_text[start+len(chunked_text[0][0:])][0].split('/')[0]
                     lookahead = ' '+ lookahead if lookahead.isalpha() else ''
                     
                     ngram = '%s[%s]%s' % (history,genNgram(chunked_text[0][0:]),lookahead)
                 except:
                     ngram = '[%s]' % genNgram(chunked_text[0][0:])
-                print '{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)
+                print ('%s\t%s\t%s\t%s' % (pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)).encode('utf-8')
                 #                                           sentNum, start, start+len(chunked_text[0][0:]), )
                 # print '{}\t{}\t{}'.format((number+'-'+word).decode('utf-8'), pat.decode('utf-8'), ' '.join(words).decode('utf-8'))
     #break
