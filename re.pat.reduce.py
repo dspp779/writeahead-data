@@ -26,7 +26,7 @@ table = {}
 k0 = 1
 k1 = 1
 U0 = 10
-minCount = 10
+minCount = 0
 
 class wordPat(Counter):
 
@@ -80,7 +80,7 @@ for word, lines in groupby(fileinput.input(), key=line_to_word): # fileinput.inp
     patterns.update( patCounts )
     patterns.calc_metrics()
 
-    goodPats = sorted( (x, y) for x, y in patterns.gen_goodpat() , key=lambda x:x[1], reverse=True)
+    goodPats = sorted( [(x, y) for x, y in patterns.gen_goodpat()], key=lambda x:x[1], reverse=True)
     
     if goodPats:
         #print
@@ -98,20 +98,20 @@ for word, lines in groupby(fileinput.input(), key=line_to_word): # fileinput.inp
         patterns = wordPat()
         patterns.update( colCounts )
         patterns.calc_metrics()
-        goodCols = sorted( (col, count) for col, count in patterns.gen_goodpat() , key=lambda x:x[1], reverse=True)
+        goodCols = sorted( [(col, count) for col, count in patterns.gen_goodpat()], key=lambda x:x[1], reverse=True)
         #print '\t*2*%s (%s)'%(pat, patCounts[pat]), goodCols
 
         if not goodCols:
             #print '\t%s (%s)'%(pat, patCounts[pat]) #, goodCols
             #print
-            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) ])
+            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) )
             #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
             table[word] += [ [pat, patCounts[pat], [(bestngram[1], colCounts[col], bestngram[0])]] ]
             #print
             continue
-        res = []    
+        res = []
         for col, count in goodCols[:5]:
-            bestngram = max([ (len(list(instances)), ngram) for ngram, instances in groupby(colInstances[col], key=line_to_ngram) ])
+            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(colInstances[col], key=line_to_ngram) )
             #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
             res += [(bestngram[1], colCounts[col], bestngram[0])]
         table[word] += [ [pat, patCounts[pat], res] ]

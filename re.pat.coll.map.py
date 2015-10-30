@@ -13,17 +13,18 @@ def awl_line_to_words(line):
     headword, wordlist_str, definition = line.strip().split('\t')
     wordlist = wordlist_str.split(', ')
     return [ headword ] + wordlist
-awl3000 = { word for word in map(awl_line_to_words, open('data.awl.all.txt')) }
+awl3000 = [ word for words in map(awl_line_to_words, open('data.awl.all.txt')) for word in words ]
 
 # longman3000: most common 3000 words in longman dictioinary
-# format: word<tab>'/'.join([possible tags])<tab>in most common n thousand in spoken/written English (Sn/Wn)
-def longman3k_line_to_words(line):
-    word, tags, level = line.strip().split()
-    tags = tags.split('/')
+# format: phrase<tab>'/'.join([possible tags])<tab>in most common n thousand in spoken/written English (Sn/Wn)
+def longman3k_line_to_word(line):
+    tokens = line.strip().split()
+    word = ' '.join(tokens[:-2])
+    tags = tuple(tokens[-2].split('/'))
     # spoken common level/written common level
-    level = level.split'/', 1)
-    return word, tags, levels
-longman3000 = [ word for word, tags, _ in map(longman3k_line_to_words, open('data.longman.3000.txt')) if any(tag in {'n','v','adj','adv'} for tag in tags) ]
+    level = tuple(tokens[-1].split('/', 1))
+    return word, tags, level
+longman3000 = [ word for word, tags, _ in map(longman3k_line_to_word, open('data.longman.3000.txt')) if any(tag in {'n','v','adj','adv'} for tag in tags) ]
 
 # pdev: Pattern Dictionary of English Verbs
 # format: word<tab>num_of_pattern<tab>Status<tab>BNC50<tab>BNC<tab>OEC
@@ -34,16 +35,23 @@ aklWords = set(awl3000+longman3000+pdev)
 
 personPronouns = 'i you he she me him her us my our your their his her them someone somebody anyone anybody'.split() # we
 determiners = 'a an the this that these those a an any another other what'.split()
-prepositions = 'above about across against along among around at before behind below beneath between beyond by down during except for from in inside into like near of off on since to toward towards through under until up upon with within'.split()
+prepositions = ('above about across against along among around at before behind below beneath between beyond '
+                'by down during except for from in inside into like near of off on since to toward towards through '
+                'under until up upon with within').split()
 conjunctions = 'and or but yet so nor'.split()
 functionWords = set(personPronouns+determiners+prepositions+conjunctions)
 
 # pronouns
 subject_personal_pronouns = set('i you he she we they'.split())
-object_personal_pronouns = set('me you him her we them'.split())
+object_personal_pronouns = set('me you him her us them'.split())
 intensive_personal_pronouns = set('myself yourself himself herself ourself ourselves yourselves themselves'.split())
 
 
+# TODO: pattern generation refinement
+# 1. The iteration should iterate over chunks instead of words,
+# because some nouns are in multiple words. ex. 9 PM, the teacher,...
+# 2. more precise label 'something': label classification
+# someone, time, place, 
 def genPat(instance):
     res = [ instance[0][0].split('/')[1] ]
     for i, wordTagChunk in enumerate(instance[1:]):
@@ -53,23 +61,33 @@ def genPat(instance):
         except:
             print >> sys.stderr, wordTag
             return '***'
-        if tag == 'IN' and chunk == 'H-PP': res += [ lemma ]
-        elif lemma == 'to': res += [ 'to' ]
+        if tag == 'IN' and chunk == 'H-PP':
+            res += [ lemma ]
+        elif lemma == 'to':
+            res += [ 'to' ]
         elif tag[:2] == 'VB' and lemma == 'be':
-            res += [ lemma ] 
-        elif tag == 'VBG' and chunk == 'H-VP': res += [ 'doing' ]
-        elif tag == 'VBZ' and chunk == 'H-VP': res += [ 'does' ]
-        elif tag == 'VBN' and chunk == 'H-VP': res += [ 'done' ]
-        elif tag == 'VBD' and chunk == 'H-VP': res += [ 'did' ]
-        elif tag in ['VB', 'VBP'] and chunk == 'H-VP': res += [ 'do' ]
+            res += [ 'be' ] 
+        elif tag == 'VBG' and chunk == 'H-VP':
+            res += [ 'doing' ]
+        elif tag == 'VBZ' and chunk == 'H-VP':
+            res += [ 'does' ]
+        elif tag == 'VBN' and chunk == 'H-VP':
+            res += [ 'done' ]
+        elif tag == 'VBD' and chunk == 'H-VP':
+            res += [ 'did' ]
+        elif tag in ['VB', 'VBP'] and chunk == 'H-VP':
+            res += [ 'do' ]
         elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP':
-            if word in 'myself ourself ourselves yourself yourselves himself herself themself me us you him her them'.split():
+            if word in intensive_personal_pronouns:
+                res += [ 'oneself' ]
+            if word in object_personal_pronouns:
                 res += [ 'someone' ]
-            else: res += [ 'something' ]
+            else:
+                res += [ 'something' ]
         elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP': res += [ 'something' ]
     if len(res) > 1:
         return ' '.join(res)
-    else: return ''
+    return ''
 
 def genIOCS(instance):
     res = [ instance[0][0].split('/')[1] ]
@@ -80,21 +98,25 @@ def genIOCS(instance):
         except:
             print >> sys.stderr, wordTag
             return '***'
-        if tag == 'IN' and chunk == 'H-PP': res += [ lemma ]
+        if tag == 'IN' and chunk == 'H-PP':
+            res += [ lemma ]
         elif lemma == 'to': res += [ 'to' ]
-        elif tag == 'VBG' and chunk == 'H-VP': res += [ word ]
-
-        elif tag == 'VBZ' and chunk == 'H-VP': res += [ word ]
-        elif tag == 'VBN' and chunk == 'H-VP': res += [ word ]
-
-        elif tag in ['VB', 'VBP'] and chunk == 'H-VP': res += [ word ]
+        elif tag == 'VBG' and chunk == 'H-VP':
+            res += [ word ]
+        elif tag == 'VBZ' and chunk == 'H-VP':
+            res += [ word ]
+        elif tag == 'VBN' and chunk == 'H-VP':
+            res += [ word ]
+        elif tag in ['VB', 'VBP'] and chunk == 'H-VP':
+            res += [ word ]
         elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP':
-            if word in 'myself ourself ourselves yourself yourselves himself herself themself me us you him her them'.split():
-                 res += [ 'person' ]
-            else: res += [ lemma ]
+            if word in object_personal_pronouns or word in intensive_personal_pronouns:
+                res += [ 'person' ]
+            else:
+                res += [ lemma ]
     if len(res) > 1:
         return ' '.join(res)
-    else: return ''
+    return ''
 
 def genNgram(instance):
     #print instance
@@ -110,7 +132,7 @@ def genNgram(instance):
 
     if len(res) > 1:
         return ' '.join(res)
-    else: return ''
+    return ''
 #line = '1\tI have great difficulty to understand him .\tI have great difficulty to understand him .\tPRP VBP JJ NN TO VB PRP .\tH-NP H-VP I-NP H-NP I-VP H-VP H-NP O'.split('\n')
 
 input_lines = 'I have great difficulty in understanding him .\tI have great difficulty in understand him .\tPRP VBP JJ NN IN VBG PRP .\tH-NP H-VP I-NP H-NP H-PP H-VP H-NP O'.split('\n')
@@ -142,10 +164,10 @@ if __name__ == '__main__':
                     #print '{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), genNgram(chunked_text[0][0:], start, start+len(chunked_text[0][0:])),\
                     #                                           sent_no, start, start+len(chunked_text[0][0:]), )
                     try:
-                        prev = [ index for index in range(start) if chunks[index][0] == 'H']
                         # fetch history from the beginning of the sentence
-                        history = ' '.join(words[:start])+' '
-                        # Or fetch one chunk 
+                        history = ' '.join(map(lambda x:x.split('/', 1)[0], unchunked_text[:start][0]))
+                        # Or fetch one chunk ahead
+                        # prev = [ index for index in range(start) if chunks[index][0] == 'H']
                         # if prev:
                         #     history = ' '.join(words[max(prev):start])+' '
                         # else:
@@ -153,7 +175,7 @@ if __name__ == '__main__':
                         lookahead = unchunked_text[start+len(chunked_text[0])][0].split('/')[0]
                         lookahead = ' '+ lookahead if lookahead.isalpha() else ''
                         
-                        ngram = '%s[%s]%s' % (history,genNgram(chunked_text[0][0:]),lookahead)
+                        ngram = '%s[%s]%s' % (history, genNgram(chunked_text[0][0:]), lookahead)
                     except:
                         ngram = '[%s]' % genNgram(chunked_text[0])
                     print '{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)
