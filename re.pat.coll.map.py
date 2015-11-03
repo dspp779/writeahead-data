@@ -165,7 +165,7 @@ if __name__ == '__main__':
                     #                                           sent_no, start, start+len(chunked_text[0][0:]), )
                     try:
                         # fetch history from the beginning of the sentence
-                        history = ' '.join(map(lambda x:x.split('/', 1)[0], unchunked_text[:start][0]))
+                        history = ' '.join(words[:start])
                         # Or fetch one chunk ahead
                         # prev = [ index for index in range(start) if chunks[index][0] == 'H']
                         # if prev:

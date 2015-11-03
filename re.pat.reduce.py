@@ -26,7 +26,7 @@ table = {}
 k0 = 1
 k1 = 1
 U0 = 10
-minCount = 0
+minCount = 10
 
 class wordPat(Counter):
 

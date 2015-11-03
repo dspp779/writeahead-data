@@ -1,12 +1,10 @@
 import fileinput
 from operator import methodcaller
 import sys
+
 from nltk.chunk import *
 from nltk.chunk.util import *
 from nltk.chunk.regexp import *
-from nltk import Tree
-from operator import methodcaller
-import string
     
 #mapPos = {  'TO': 'to', 'VB':'do', 'VBP':'do', 'VBD':'did', 'VBZ':'does', 'VBN':'done', 'VBG':'doing', 'JJ':'adj.', 'RB':'adv.' }
 
@@ -90,7 +88,7 @@ aklWords = {x:True for x in set(re.findall('[a-z_]+', (file('data.akl.all.txt').
 
 #for line in input_lines: # fileinput.input():
 for i, line in enumerate(fileinput.input()):
-    line = line.decode('utf-8').replace('/', '|')
+    line = line.replace('/', '|')
     sentNum, words, lemmas, poss, chunks = [i]+line.strip().split('\t')
     #words, lemmas, poss, chunks = line.strip().split('\t')
     words, lemmas, poss, chunks = map(methodcaller('split'), (words[0].lower()+words[1:], lemmas[0].lower()+lemmas[1:], poss, chunks))
@@ -127,7 +125,7 @@ for i, line in enumerate(fileinput.input()):
                     ngram = '%s[%s]%s' % (history,genNgram(chunked_text[0][0:]),lookahead)
                 except:
                     ngram = '[%s]' % genNgram(chunked_text[0][0:])
-                print ('%s\t%s\t%s\t%s' % (pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)).encode('utf-8')
+                print '%s\t%s\t%s\t%s' % (pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)
                 #                                           sentNum, start, start+len(chunked_text[0][0:]), )
                 # print '{}\t{}\t{}'.format((number+'-'+word).decode('utf-8'), pat.decode('utf-8'), ' '.join(words).decode('utf-8'))
     #break

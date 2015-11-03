@@ -2958,7 +2958,6 @@ solicitor n S3/W2
 solid adj S3/W3
 solution n S2/W1
 solve v S2/W3
-LONGMAN COMMUNICATION 3000 13
 some det S1/W1
 some pron S1/W1
 some adv S1/W1
@@ -3267,7 +3266,6 @@ tip n S2/W3
 tip v S3
 tired adj S1/W2
 title n S3/W1
-to S1/W1
 to prep S1/W1
 toast n S3
 today adv S1/W1
