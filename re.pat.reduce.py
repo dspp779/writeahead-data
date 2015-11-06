@@ -21,7 +21,6 @@ class OrderedDefaultDict(OrderedDict):
             raise KeyError(key)
         val = self[key] = self.default_factory()
         return val
-table = {}
 
 k0 = 1
 k1 = 1
@@ -29,9 +28,8 @@ U0 = 10
 minCount = 10
 
 class wordPat(Counter):
-
     def __init__(self):
-        self.default_factory = Counter # Collocates
+        self.default_factory = Counter
 
     def __repr__(self):
         #tail = ', ...' if len(self) > 3 else ''
@@ -45,10 +43,12 @@ class wordPat(Counter):
 
     def gen_goodpat(self):
         if self.freq == 0 or self.dev == 0: return
-        for pat, count in sorted([ (pat, self[pat]) for pat in self if (self[pat] - self.avg_freq) / self.dev > k0 ], 
-                        key=lambda x: x[1], reverse=True):
-            if count > minCount:
-                yield pat, count
+        for pat, count in self.most_common():
+            if (count - self.avg_freq) / self.dev <= k0:
+                break
+            if count <= minCount:
+                break
+            yield pat, count
     
 
 #difficulty:N	difficulty about something	difficulty about learning	difficulty about multiagent learning	1	4	8
@@ -66,59 +66,66 @@ def line_to_ngram(x):
     
 def line_to_rest(x):
     return '\t'.join(x.strip().split('\t')[2:4])
- 
-#for word, lines in groupby(input_lines.split('\n'), key=line_to_word): # fileinput.input()
-for word, lines in groupby(fileinput.input(), key=line_to_word): # fileinput.input()
 
-    #print 'Handling %s'%word
-    #print
+if __name__ == '__main__':
+    table = {}
+    for word, lines in groupby(fileinput.input(), key=line_to_word):
+        # ISSUE: The input is sorted only by key, direct groupby doesn't perform as expected - same pats are grouped
+        # patInstances = [ (pat, list(instances)) for pat, instances in groupby(lines, key=line_to_pat) ]
+        # FIX: sort by pat first so that instances with the same patterns would be grouped correctly
+        lines = sorted(lines)
 
-    patInstances = [ (pat, list(instances)) for pat, instances in groupby(lines, key=line_to_pat) ]
-    patCounts = dict( (pat, len(instances)) for pat, instances in patInstances )
-    patInstances = dict(patInstances)
-    patterns = wordPat()
-    patterns.update( patCounts )
-    patterns.calc_metrics()
+        patInstances = { pat: list(instances) for pat, instances in groupby(lines, key=line_to_pat) }
+        patCounts = { pat: len(instances) for pat, instances in patInstances.iteritems() }
 
-    goodPats = sorted( [(x, y) for x, y in patterns.gen_goodpat()], key=lambda x:x[1], reverse=True)
-    
-    if goodPats:
-        #print
-        #print '%s (%s)'%(word, sum([ count for _, count in goodPats])) #, goodPats
-        #print
-        table[word] = [ sum( count for _, count in goodPats ) ]
-    else:
-        continue
-        
-    for pat, count in goodPats[:7]:
-        #print '\t*1*%s (%s)'%(pat, count)
-        colInstances = [ (col, list(instances)) for col, instances in groupby(patInstances[pat], key=line_to_col) ]
-        colCounts = dict( (col, len(instances)) for col, instances in colInstances )
-        colInstances = dict(colInstances)
         patterns = wordPat()
-        patterns.update( colCounts )
+        patterns.update( patCounts )
         patterns.calc_metrics()
-        goodCols = sorted( [(col, count) for col, count in patterns.gen_goodpat()], key=lambda x:x[1], reverse=True)
-        #print '\t*2*%s (%s)'%(pat, patCounts[pat]), goodCols
 
-        if not goodCols:
-            #print '\t%s (%s)'%(pat, patCounts[pat]) #, goodCols
-            #print
-            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) )
-            #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
-            table[word] += [ [pat, patCounts[pat], [(bestngram[1], colCounts[col], bestngram[0])]] ]
-            #print
-            continue
-        res = []
-        for col, count in goodCols[:5]:
-            bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(colInstances[col], key=line_to_ngram) )
-            #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
-            res += [(bestngram[1], colCounts[col], bestngram[0])]
-        table[word] += [ [pat, patCounts[pat], res] ]
-        #print
+        goodPats = list(patterns.gen_goodpat())
         
-#print table
-print json.dumps(table)
+        if goodPats:
+            #print
+            #print '%s (%s)'%(word, sum([ count for _, count in goodPats])) #, goodPats
+            #print
+            table[word] = [ sum( count for _, count in goodPats ) ]
+        else:
+            continue
+            
+        for pat, count in goodPats[:7]:
+            #print '\t*1*%s (%s)'%(pat, count)
+            colInstances = { col: list(instances) for col, instances in groupby(patInstances[pat], key=line_to_col) }
+            colCounts = { col: len(instances) for col, instances in colInstances.iteritems() }
+
+            cols = wordPat()
+            cols.update( colCounts )
+            cols.calc_metrics()
+            goodCols = list(cols.gen_goodpat())
+            #print '\t*2*%s (%s)'%(pat, patCounts[pat]), goodCols
+
+            if not goodCols:
+                #print '\t%s (%s)'%(pat, patCounts[pat]) #, goodCols
+                #print
+                bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) )
+                #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
+                # ISSUE: variable 'col' not exists
+                # FIX:
+                # table[word] += [ [pat, patCounts[pat], [(bestngram[1], colCounts[col], bestngram[0])]] ]
+                counts = sum( colCounts.values() )
+                table[word] += [ [pat, patCounts[pat], [(bestngram[1], count, bestngram[0])]] ]
+
+                #print
+                continue
+            res = []
+            for col, count in goodCols[:5]:
+                bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(colInstances[col], key=line_to_ngram) )
+                #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
+                res += [(bestngram[1], colCounts[col], bestngram[0])]
+            table[word] += [ [pat, patCounts[pat], res] ]
+            #print
+            
+    #print table
+    print json.dumps(table)
 
 '''with open('test.json.txt', 'w') as outfile:
      json.dump(table, outfile)
