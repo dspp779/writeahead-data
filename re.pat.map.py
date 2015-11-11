@@ -1,3 +1,5 @@
+#!/usr/bin/env python 
+# -*- coding: utf-8 -*-
 import fileinput
 from operator import methodcaller
 import sys

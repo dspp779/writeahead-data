@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python 
+# -*- coding: utf-8 -*-
 from __future__ import division
 
 import sys, fileinput
@@ -103,13 +104,18 @@ if __name__ == '__main__':
             goodCols = list(cols.gen_goodpat())
             #print '\t*2*%s (%s)'%(pat, patCounts[pat]), goodCols
 
+            # TODO: best ngram selection
+            #   Ngram used to be one chunk before pattern, so it's common to see instances with the same ngram
+            #   While the ngram starts from the beginning of the sentence now
+            #   Is it appropriate to select the best ngram by their frequecies? while they might all be 1
             if not goodCols:
                 #print '\t%s (%s)'%(pat, patCounts[pat]) #, goodCols
                 #print
                 bestngram = max( (len(list(instances)), ngram) for ngram, instances in groupby(patInstances[pat], key=line_to_ngram) )
                 #print '\t\t%s (%s, %s)'%(bestngram[1], colCounts[col], bestngram[0])
+
                 # ISSUE: variable 'col' not exists
-                # FIX:
+                # FIX: total count
                 # table[word] += [ [pat, patCounts[pat], [(bestngram[1], colCounts[col], bestngram[0])]] ]
                 counts = sum( colCounts.values() )
                 table[word] += [ [pat, patCounts[pat], [(bestngram[1], count, bestngram[0])]] ]
