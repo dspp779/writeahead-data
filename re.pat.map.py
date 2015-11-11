@@ -1,132 +1,116 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*-
-import fileinput
-from operator import methodcaller
-import sys
-from nltk.chunk import *
-from nltk.chunk.util import *
-from nltk.chunk.regexp import *
-from nltk import Tree
-from operator import methodcaller
-import patterns
+import sys, os, fileinput
+from itertools import groupby, imap, product
+
+# patterns
+reservedWords = { 'to', 'so', 'not', 'where', 'which',
+                  'that', 'as', 'if', 'though', 'and',
+                  'by', 'with', 'together', 'way', 'into' }
+Vpatterns = set('V, V n, V pl-n, V pron-refl, V-amount, V -ing, '
+                'V to-inf, V inf, V that, V wh, V wh to-inf, '
+                'V quote, V so, V not, V as if, V as though, '
+                'V and v, '
+                'V prep, V adv, V together, V prep n, V as adj, '
+                'V as to wh, V by amount, V by -ing, '
+                'V n n, V n adj, V n -ing, V n to-inf, V n inf, '
+                'V n that, V n wh, V n wh to-inf, V n quote, V n -ed, '
+                'V n prep, V n adv, V n with adv, V pl-n with together, '
+                'V way prep, V way adv, V n prep n, V n as adj, '
+                'V n as to wh, V n into -ing'.split(', '))
+Npatterns = set("N that, N to-inf, the N, N -ing, N 's ADJST, "
+                "N about inf, N prep n, N of amount N of pl-n, "
+                "N of n as n, N of n to n, N of n with n, "
+                "N on n for n, N on n to-inf, N ord ADJ?, "
+                "N to n that, N to n to-inf, N with n for n, "
+                "N with n that, N with n to-inf, N for n to-inf, "
+                "N from n for n, N from n that N from n to-inf, "
+                "N from n to n,"
+                "number N, n of N, n to N"
+                "on N, with N, within N, without N, in N"
+                "N be, there be N, there BE ? about N"
+                "N of -ing, N of -ing n, N in -ing n, N -ing n, N to inf n, N of n, N with n".split(', '))
+Apatterns = set('ADJ'.split(', '))
+allTemplate = Vpatterns | Npatterns | Apatterns
+
+# pronouns
+subject_personal_pronouns = set('i you he she we they'.split())
+object_personal_pronouns = set('me you him her us them'.split())
+intensive_personal_pronouns = set('myself yourself himself herself ourself ourselves yourselves themselves'.split())
+
+
+def genPattern(template, words, lemmas):
+    res = []
+    headword = ''
+    for tag, word, lemma in zip(template, words, lemmas):
+        if tag:
+            if tag.isupper():
+                headword = headword if headword else lemma
+                res += [ lemma ]
+            elif tag in {'prep', 'wh'}: res += [ lemma ]
+            else: res += [ tag ]
+
+            # if word in intensive_personal_pronouns: res = [ 'oneself' ]
+            # if word in object_personal_pronouns: res = [ 'someone' ]
+            # else: res = [ 'something' ]
+    return headword, ' '.join(res)
+
+def genElement(word, lemma, tag, phrase):
+    res = []
+    # if lemma in reservedWords: res += [lemma, ]
+    # if phrase[0] == 'H' and tag == 'VB': res += ['V', 'v', 'inf']
+    # if phrase[0] == 'H' and tag == 'VB': res += ['V', 'v', 'inf']
     
-#mapPos = {  'TO': 'to', 'VB':'do', 'VBP':'do', 'VBD':'did', 'VBZ':'does', 'VBN':'done', 'VBG':'doing', 'JJ':'adj.', 'RB':'adv.' }
+    if lemma in reservedWords: res += [ lemma ]
+    elif tag in {'WDT', 'WP', 'WP$', 'WRB'}: res += ['wh']
+    elif phrase[0] == 'H':
+        if phrase == 'H-PP': res += [ 'prep' ]
+        if tag == 'CD': res += [ 'amount' ]
+        elif tag == 'IN': res += [ lemma ]
+        elif tag in {'JJ', 'JJR', 'JJS'}: res += [ 'ADJ', 'adj' ]
+        elif tag in {'NN', 'NNS', 'NNP', 'NNPS'}: res += [ 'N', 'n' ]
+        elif tag == 'TO' or lemma == 'to': res += [ 'to' ]
+        elif tag[:2] == 'VB' and lemma == 'be': res += [ 'be' ]
+        elif tag == 'VB': res += [ 'V', 'v', 'inf' ]
+        elif tag in {'VBD', 'VBN'}: res += [ 'V', 'v', '-ed' ]
+        elif tag == 'VBG': res += [ 'V', 'v', '-ing' ]
+        elif tag == 'VBP': res += [ 'V', 'v', 'inf' ]
+        elif tag == 'VBZ': res += [ 'V', 'v' ]
+        elif tag[:2] in {'NN', 'PR', 'NP'} and phrase == 'H-NP':
+            res += [ 'n' ]
+    elif phrase[0] == 'I':
+        res += [ '' ]
+    elif phrase == 'O':
+        return []
+    return res
 
-
-def genPat(instance):
-    res = [ instance[0][0].split('/')[1] ]
-    for i, wordTagChunk in enumerate(instance[1:]):
-        wordTag, chunk = wordTagChunk
-        try:
-            word, lemma, tag = wordTag.split('/')
-        except:
-            print >> sys.stderr, wordTag
-            return '***'
-        if tag == 'IN' and chunk == 'H-PP': res += [ lemma ]
-        elif lemma == 'to': res += [ 'to' ]
-        elif tag[:2] == 'VB' and lemma == 'be': res += [ lemma ] 
-        elif tag == 'VBG' and chunk == 'H-VP': res += [ 'doing' ]
-        elif tag == 'VBZ' and chunk == 'H-VP': res += [ 'does' ]
-        elif tag == 'VBN' and chunk == 'H-VP': res += [ 'done' ]
-        elif tag == 'VBD' and chunk == 'H-VP': res += [ 'did' ]
-        elif tag in ['VB', 'VBP'] and chunk == 'H-VP': res += [ 'do' ]
-        elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP':
-            if word in 'myself ourself ourselves yourself yourselves himself herself themself me us you him her them'.split():
-                 res += [ 'someone' ]
-            else: res += [ 'something' ]
-        elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP': res += [ 'something' ]
-
-    if len(res) > 1:
-        return ' '.join(res)
-    return ''
-
-def genIOCS(instance):
-    res = [ instance[0][0].split('/')[1] ]
-    for i, wordTagChunk in enumerate(instance[1:]):
-        wordTag, chunk = wordTagChunk
-        try:
-            word, lemma, tag = wordTag.split('/')
-        except:
-            print >> sys.stderr, wordTag
-            return '***'
-        if tag == 'IN' and chunk == 'H-PP': res += [ lemma ]
-        elif lemma == 'to': res += [ 'to' ]
-        elif tag == 'VBG' and chunk == 'H-VP': res += [ word ]
-        elif tag == 'VBZ' and chunk == 'H-VP': res += [ word ]
-        elif tag == 'VBN' and chunk == 'H-VP': res += [ word ]
-        elif tag in ['VB', 'VBP'] and chunk == 'H-VP': res += [ word ]
-        elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP':
-            if word in 'myself ourself ourselves yourself yourselves himself herself themself me us you him her them'.split():
-                 res += [ 'person' ]
-            else: res += [ lemma ]
-
-    if len(res) > 1:
-        return ' '.join(res)
-    return ''
-
-def genNgram(instance):
-    #print instance
-    res = [ instance[0][0].split('/')[0] ]
-    for i, wordTagChunk in enumerate(instance[1:]):
-        wordTag, chunk = wordTagChunk
-        try:
-            word, lemma, tag = wordTag.split('/')
-        except:
-            print >> sys.stderr, wordTag
-            return ''
-        res += [ word ]
-
-    if len(res) > 1:
-        return ' '.join(res)
-    return ''
-#line = '1\tI have great difficulty to understand him .\tI have great difficulty to understand him .\tPRP VBP JJ NN TO VB PRP .\tH-NP H-VP I-NP H-NP I-VP H-VP H-NP O'.split('\n')
-
-input_lines = 'I have great difficulty in understanding him .\tI have great difficulty in understand him .\tPRP VBP JJ NN IN VBG PRP .\tH-NP H-VP I-NP H-NP H-PP H-VP H-NP O'.split('\n')
-
-
-aklWords = set(re.findall('[a-z_]+', (open('data.akl.all.txt').read()+open('data.teufel.all.txt').read()).lower()))
-# aklWords = {x:True for x in set(re.findall('[a-z_]+', (open('data.akl.all.txt').read()+open('data.teufel.all.txt').read()).lower())) }
-#print >> sys.stderr, "%s words in aklWords ..."%len(aklWords)
+def findGoodPat(elements):
+    res = set()
+    length = len(elements)
+    for i in range(length-1):
+        if not (elements[i] and elements[i][0]): continue
+        for j in range(i+2, min(i+10, length+1))[::-1]:
+            if not (elements[j-1] and elements[j-1][0]): continue
+            subres = { genPattern(pat, words[i:j], lemmas[i:j]) for pat in product(*elements[i:j]) \
+                        if ' '.join(filter(lambda x: x[0] if x else x, pat)) in allTemplate }
+            if subres:
+                res |= subres
+                break
+    return res
 
 if __name__ == '__main__':
-    for sent_No, line in enumerate(fileinput.input()):
-        line = line.strip().replace('/', '|')
-        words, lemmas, poss, chunks = line.split('\t')
-        words, lemmas, poss, chunks = map(methodcaller('split'), (words[0].lower()+words[1:], lemmas[0].lower()+lemmas[1:], poss, chunks))
-        tagged_text = ' '.join( '/'.join(x) for x in zip(words, lemmas, poss, chunks) )
-
-        # TODO: new pattern generating approach coming
-        try:
-            unchunked_text = tagstr2tree(tagged_text.encode('utf-8'))
-        except:
-            continue
-        chunk_parser = RegexpChunkParser(map(lambda x:ChunkRule(*x), patterns.regRulesR), chunk_label='Pat')
-
-        for start in range(len(unchunked_text)-1):
-            word, lemma, tag = unchunked_text[start:][0][0].split('/')
-            # filter out function words or words not in aklWords
-            if word not in aklWords and lemma not in aklWords:
-                continue
-            #print >> sys.stderr, unchunked_text[start:]
-            #break
-            chunked_text = chunk_parser.parse(unchunked_text[start:])
-            #    continue
-            if hasattr(chunked_text[0], '_label') and chunked_text[0]._label == 'Pat':
-                pat, pos = genPat(chunked_text[0][0:]), chunked_text[0][0][1][2:-1]
-                if pat:
-                    #print '{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), genNgram(chunked_text[0][0:], start, start+len(chunked_text[0][0:])),\
-                    #                                           sent_No, start, start+len(chunked_text[0][0:]), )
-                    try:
-                        # fetch history from the beginning of the sentence
-                        history = ' '.join(words[:start]) + ' '
-                        # Or fetch one chunk ahead
-                        # prev = [ index for index in range(start) if chunks[index][0] == 'H']
-                        # history = ' '.join(words[max(prev):start])+' ' if prev else ''
-                        lookahead = unchunked_text[start+len(chunked_text[0][0:])][0].split('/')[0]
-                        lookahead = ' '+ lookahead if lookahead.isalpha() else ''
-                        
-                        ngram = '%s[%s]%s' % (history,genNgram(chunked_text[0][0:]),lookahead)
-                    except:
-                        ngram = '[%s]' % genNgram(chunked_text[0])
-                    print '{}\t{}\t{}\t{}'.format(pat[:pat.index(' ')]+':'+pos, pat, genIOCS(chunked_text[0][0:]), ngram)
-                    # print '{}\t{}\t{}'.format((number+'-'+word).decode('utf-8'), pat.decode('utf-8'), ' '.join(words).decode('utf-8'))
+    for i, line in enumerate(fileinput.input()):
+        line = line.decode('utf-8').strip()
+        if i != 30420: continue
+        if not line: continue
+        print i, line
+        words, lemmas, tags, phrases = [ x.split(' ') for x in line.split('\t') ]
+        elements = [ genElement(*x) for x in zip(words, lemmas, tags, phrases) ]
+        print elements[1:8]
+        res = findGoodPat(elements)
+        for headword, pat in res:
+            print headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
+        # prinst
+        # print
+        # if res:
+        #     print res
