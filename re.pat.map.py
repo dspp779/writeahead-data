@@ -62,18 +62,18 @@ def genElement(word, lemma, tag, phrase):
     # if phrase[0] == 'H' and tag == 'VB': res += ['V', 'v', 'inf']
     
     if lemma in reservedWords: res += [ lemma ]
-    elif tag in {'WDT', 'WP', 'WP$', 'WRB'}: res += ['wh']
-    elif phrase[0] == 'H':
+    if tag in {'WDT', 'WP', 'WP$', 'WRB'}: res += ['wh']
+    if phrase[0] == 'H':
         if phrase == 'H-PP': res += [ 'prep' ]
         if tag == 'CD': res += [ 'amount' ]
-        elif tag == 'IN': res += [ lemma ]
+        if tag == 'IN': res += [ lemma ]
         elif tag in {'JJ', 'JJR', 'JJS'}: res += [ 'ADJ', 'adj' ]
         elif tag in {'NN', 'NNS', 'NNP', 'NNPS'}: res += [ 'N', 'n' ]
-        elif tag == 'TO' or lemma == 'to': res += [ 'to' ]
         elif tag[:2] == 'VB' and lemma == 'be': res += [ 'be' ]
         elif tag == 'VB': res += [ 'V', 'v', 'inf' ]
-        elif tag in {'VBD', 'VBN'}: res += [ 'V', 'v', '-ed' ]
-        elif tag == 'VBG': res += [ 'V', 'v', '-ing' ]
+        elif tag == 'VBD': res += [ 'V', 'v', '-ed' ]
+        elif tag == 'VBN': res += [ 'V', '-ed' ]
+        elif tag == 'VBG': res += [ 'V', '-ing' ]
         elif tag == 'VBP': res += [ 'V', 'v', 'inf' ]
         elif tag == 'VBZ': res += [ 'V', 'v' ]
         elif tag[:2] in {'NN', 'PR', 'NP'} and phrase == 'H-NP':
