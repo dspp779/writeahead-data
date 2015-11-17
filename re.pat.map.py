@@ -30,7 +30,12 @@ Npatterns = set("N that, N to-inf, the N, N -ing, N 's ADJST, "
                 "on N, with N, within N, without N, in N"
                 "N be, there be N, there BE ? about N"
                 "N of -ing, N of -ing n, N in -ing n, N -ing n, N to inf n, N of n, N with n".split(', '))
-Apatterns = set('ADJ'.split(', '))
+Apatterns = set('a ADJ amount, ADJ adj, ADJ and adj, ADJ that, ADJ to-inf, ADJ enough, ADJ -ing, ADJ n, ADJ wh however ADJ, '
+                'ADJ prep n, ADJ after -ing, ADJ as to wh, ADJ enough n, ADJ enough PREP2 n, ADJ in color, ADJ onto -ing n, '
+                'ADJ PREP1 n for? n, ADJ to n for -ing n, ADJ enough for n to-inf, , ADJ enough that, ADJ enough to-inf, '
+                'ADJ enough n for n, ADJ enough n for n to-inf, ADJ enough n that, ADJ enough n to-inf, ADJ n for n, '
+                'ADJR n than clause, ADJR n than n, ADJR n than prep, ADJR than done n, ADJR than adj, ADJR than someway, '
+                'adv. ADJ, adv. ADJ n, amount ADJ, as ADJ as COMP, how ADJ COMP2, however ADJ'.split(', '))
 allTemplate = Vpatterns | Npatterns | Apatterns
 
 # pronouns
@@ -68,6 +73,7 @@ def genElement(word, lemma, tag, phrase):
         if tag == 'CD': res += [ 'amount' ]
         if tag == 'IN': res += [ lemma ]
         elif tag in {'JJ', 'JJR', 'JJS'}: res += [ 'ADJ', 'adj' ]
+        elif tag == {'RB', 'RBR', 'RBS', 'RP'}: res += [ 'ADV', 'adv' ]
         elif tag in {'NN', 'NNS', 'NNP', 'NNPS'}: res += [ 'N', 'n' ]
         elif tag[:2] == 'VB' and lemma == 'be': res += [ 'be' ]
         elif tag == 'VB': res += [ 'V', 'v', 'inf' ]
@@ -76,8 +82,7 @@ def genElement(word, lemma, tag, phrase):
         elif tag == 'VBG': res += [ 'V', '-ing' ]
         elif tag == 'VBP': res += [ 'V', 'v', 'inf' ]
         elif tag == 'VBZ': res += [ 'V', 'v' ]
-        elif tag[:2] in {'NN', 'PR', 'NP'} and phrase == 'H-NP':
-            res += [ 'n' ]
+        elif tag == 'PRP': res += [ 'n' ]
     elif phrase[0] == 'I':
         res += [ '' ]
     elif phrase == 'O':
