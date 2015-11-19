@@ -78,8 +78,8 @@ def genPat(instance):
         elif tag == 'VBD' and chunk == 'H-VP': res += [ 'did' ]
         elif tag in ['VB', 'VBP'] and chunk == 'H-VP': res += [ 'do' ]
         elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP':
-            if word in intensive_personal_pronouns: res += [ 'oneself' ]
-            if word in object_personal_pronouns: res += [ 'someone' ]
+            if word in intensive_personal_pronouns: res += [ 'something' ]
+            if word in object_personal_pronouns: res += [ 'something' ]
             else: res += [ 'something' ]
         elif tag[:2] in ['NN', 'PR', 'NP'] and chunk == 'H-NP': res += [ 'something' ]
 
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                     #                                           sent_no, start, start+len(chunked_text[0][0:]), )
                     try:
                         # fetch history from the beginning of the sentence
-                        history = ' '.join(words[:start]) + ' '
+                        history = ' '.join(words[:start]) + ' ' if start > 0 else ''
                         # Or fetch one chunk ahead
                         # prev = [ index for index in range(start) if chunks[index][0] == 'H']
                         # history = ' '.join(words[max(prev):start])+' ' if prev else ''
