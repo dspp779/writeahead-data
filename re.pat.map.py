@@ -49,7 +49,7 @@ def genPattern(template, words, lemmas):
     for tag, word, lemma in zip(template, words, lemmas):
         if tag:
             if tag.isupper():
-                headword = headword if headword else lemma
+                headword = (headword if headword else lemma, tag)
                 res += [ lemma ]
             elif tag in {'prep', 'wh'}: res += [ lemma ]
             else: res += [ tag ]
@@ -124,7 +124,7 @@ if __name__ == '__main__':
             # out = headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
             # if len(out.strip()) == 0:
             #     exit()
-            print headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
+            print ('%s:%s' % headword).encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
         # prinst
         # print
         # if res:
