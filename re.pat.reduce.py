@@ -62,9 +62,6 @@ def line_to_pat(x):
 if __name__ == '__main__':
     table = {}
     for headword, lines in groupby(fileinput.input(), key=line_to_headword):
-        # ISSUE: The input is sorted only by key, direct groupby doesn't perform as expected - same pats are grouped
-        # patInstances = [ (pat, list(instances)) for pat, instances in groupby(lines, key=line_to_pat) ]
-        # FIX: sort by pat first so that instances with the same patterns would be grouped correctly
         lines = sorted(lines)
 
         patInstances = { pat: list(instances) for pat, instances in groupby(lines, key=line_to_pat) }
@@ -76,8 +73,6 @@ if __name__ == '__main__':
 
         goodPats = list(patterns.gen_goodpat())
         
-        print patterns
-        print patCounts
         for pat, count in goodPats:
             print ('%s\t%s\t%d' % (headword, pat, count)).encode('utf-8')
 

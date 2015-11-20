@@ -26,13 +26,12 @@ Npatterns = set("N that, N to-inf, the N, N -ing, N 's ADJST, "
                 "N with n that, N with n to-inf, N for n to-inf, "
                 "N from n for n, N from n that N from n to-inf, "
                 "N from n to n,"
-                "number N, n of N, n to N"
-                "on N, with N, within N, without N, in N"
-                "N be, there be N, there BE ? about N"
-                "N of -ing, N of -ing n, N in -ing n, N -ing n, N to inf n, N of n, N with n".split(', '))
+                "number N, n of N, n to N, "
+                "on N, with N, within N, without N, in N, "
+                "N be, there be N, there BE ? about N".split(', '))
 Apatterns = set('a ADJ amount, ADJ adj, ADJ and adj, ADJ that, ADJ to-inf, ADJ enough, ADJ -ing, ADJ n, ADJ wh however ADJ, '
                 'ADJ prep n, ADJ after -ing, ADJ as to wh, ADJ enough n, ADJ enough PREP2 n, ADJ in color, ADJ onto -ing n, '
-                'ADJ PREP1 n for? n, ADJ to n for -ing n, ADJ enough for n to-inf, , ADJ enough that, ADJ enough to-inf, '
+                'ADJ PREP1 n for? n, ADJ to n for -ing n, ADJ enough for n to-inf, ADJ enough that, ADJ enough to-inf, '
                 'ADJ enough n for n, ADJ enough n for n to-inf, ADJ enough n that, ADJ enough n to-inf, ADJ n for n, '
                 'ADJR n than clause, ADJR n than n, ADJR n than prep, ADJR than done n, ADJR than adj, ADJR than someway, '
                 'adv. ADJ, adv. ADJ n, amount ADJ, as ADJ as COMP, how ADJ COMP2, however ADJ'.split(', '))
@@ -83,21 +82,27 @@ def genElement(word, lemma, tag, phrase):
         elif tag == 'VBP': res += [ 'V', 'v', 'inf' ]
         elif tag == 'VBZ': res += [ 'V', 'v' ]
         elif tag == 'PRP': res += [ 'n' ]
-    elif phrase[0] == 'I':
+    elif phrase[0] == 'I' and not res:
         res += [ '' ]
     elif phrase == 'O':
         return []
     return res
 
+def to_pat(elements):
+    return ' '.join(filter(lambda x: x[0] if x else x, elements))
+
 def findGoodPat(elements):
     res = set()
     length = len(elements)
     for i in range(length-1):
-        if not (elements[i] and elements[i][0]): continue
+        # start from concrete elements (not empty or blank)
+        if not(elements[i] and elements[i][0]): continue
         for j in range(i+2, min(i+10, length+1))[::-1]:
-            if not (elements[j-1] and elements[j-1][0]): continue
+            # elements[i:j] contains no empty element and does not end with blank element
+            if [] in elements[i:j] or not elements[j-1][0]: continue
+            # in template
             subres = { genPattern(pat, words[i:j], lemmas[i:j]) for pat in product(*elements[i:j]) \
-                        if ' '.join(filter(lambda x: x[0] if x else x, pat)) in allTemplate }
+                        if to_pat(pat) in allTemplate }
             if subres:
                 res |= subres
                 break
@@ -105,15 +110,20 @@ def findGoodPat(elements):
 
 if __name__ == '__main__':
     for i, line in enumerate(fileinput.input()):
-        line = line.decode('utf-8').strip()
-        if i != 30420: continue
+        # if i != 167: continue
         if not line: continue
-        print i, line
+        line = line.decode('utf-8').strip()
+        # print i, line
         words, lemmas, tags, phrases = [ x.split(' ') for x in line.split('\t') ]
         elements = [ genElement(*x) for x in zip(words, lemmas, tags, phrases) ]
-        print elements[1:8]
+
+        # print elements[1:8]
+
         res = findGoodPat(elements)
         for headword, pat in res:
+            # out = headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
+            # if len(out.strip()) == 0:
+            #     exit()
             print headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
         # prinst
         # print
