@@ -1,7 +1,7 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*-
 import sys, os, fileinput
-from itertools import groupby, imap, product
+from itertools import imap, islice, product
 
 # patterns
 reservedWords = { 'to', 'so', 'not', 'where', 'which',
@@ -43,22 +43,6 @@ object_personal_pronouns = set('me you him her us them'.split())
 intensive_personal_pronouns = set('myself yourself himself herself ourself ourselves yourselves themselves'.split())
 
 
-def genPattern(template, words, lemmas):
-    res = []
-    headword = ''
-    for tag, word, lemma in zip(template, words, lemmas):
-        if tag:
-            if tag.isupper():
-                headword = (headword if headword else lemma, tag)
-                res += [ lemma ]
-            elif tag in {'prep', 'wh'}: res += [ lemma ]
-            else: res += [ tag ]
-
-            # if word in intensive_personal_pronouns: res = [ 'oneself' ]
-            # if word in object_personal_pronouns: res = [ 'someone' ]
-            # else: res = [ 'something' ]
-    return headword, ' '.join(res)
-
 def genElement(word, lemma, tag, phrase):
     res = []
     # if lemma in reservedWords: res += [lemma, ]
@@ -88,11 +72,39 @@ def genElement(word, lemma, tag, phrase):
         return []
     return res
 
-def to_pat(elements):
+def genPattern(template, words, lemmas):
+    res = []
+    headword = ''
+    for tag, word, lemma in zip(template, words, lemmas):
+        if tag:
+            if tag.isupper():
+                headword = (headword if headword else lemma, tag)
+                res += [ lemma ]
+            elif tag in {'prep', 'wh'}: res += [ lemma ]
+            else: res += [ tag ]
+
+            # if word in intensive_personal_pronouns: res = [ 'oneself' ]
+            # if word in object_personal_pronouns: res = [ 'someone' ]
+            # else: res = [ 'something' ]
+    return headword, ' '.join(res)
+
+def to_str(elements):
     return ' '.join(filter(lambda x: x[0] if x else x, elements))
 
-def findGoodPat(elements):
-    res = set()
+def findGoodPat(words, lemmas, tags, phrases):
+    def next_n_chunk_distance(phrases, n):
+        count = 0
+        for i, phrase in enumerate(phrases):
+            if phrase[0] == 'H':
+                count += 1
+                if count > n:
+                    return i
+            elif phrase[0] == 'O':
+                return i
+        return len(phrases)
+                
+    # generate elements such as V, N, ADV...
+    elements = [ genElement(*x) for x in zip(words, lemmas, tags, phrases) ]
     length = len(elements)
     for i in range(length-1):
         # start from concrete elements (not empty or blank)
@@ -101,12 +113,18 @@ def findGoodPat(elements):
             # elements[i:j] contains no empty element and does not end with blank element
             if [] in elements[i:j] or not elements[j-1][0]: continue
             # in template
-            subres = { genPattern(pat, words[i:j], lemmas[i:j]) for pat in product(*elements[i:j]) \
-                        if to_pat(pat) in allTemplate }
-            if subres:
-                res |= subres
+            templates = [ template for template in product(*elements[i:j]) if to_str(template) in allTemplate ]
+            for template in templates:
+                headword, pat = genPattern(template, words[i:j], lemmas[i:j])
+                headword = '%s:%s' % headword
+                col = ' '.join(lemmas[i:j])
+                history = ' '.join(words[:i]) + ' ' if i > 0 else ''
+                lookahead_index = j + next_n_chunk_distance(phrases[j:], 1)
+                lookahead = ' ' + ' '.join(words[j:lookahead_index]) if lookahead_index > j else ''
+                sent = '%s[%s]%s' % (history, ' '.join(words[i:j]), lookahead)
+                yield headword, pat, col, sent
+            if templates:
                 break
-    return res
 
 if __name__ == '__main__':
     for i, line in enumerate(fileinput.input()):
@@ -115,16 +133,13 @@ if __name__ == '__main__':
         line = line.decode('utf-8').strip()
         # print i, line
         words, lemmas, tags, phrases = [ x.split(' ') for x in line.split('\t') ]
-        elements = [ genElement(*x) for x in zip(words, lemmas, tags, phrases) ]
 
-        # print elements[1:8]
-
-        res = findGoodPat(elements)
-        for headword, pat in res:
+        for patInfo in findGoodPat(words, lemmas, tags, phrases):
             # out = headword.encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
             # if len(out.strip()) == 0:
             #     exit()
-            print ('%s:%s' % headword).encode('unicode_escape') + '\t' + pat.encode('unicode_escape')
+            # print patInfo
+            print '\t'.join( info.encode('unicode_escape') for info in patInfo )
         # prinst
         # print
         # if res:
