@@ -6,22 +6,13 @@ import time
 import sys
 from microsofttranslator import Translator
 
-# translator = Translator('pengyu2', '4ZmrcZmhQuau5QiiNaBa83pkCspSKjkcZ6jIuCK1sEw=')
 to_languages = [u'en', u'zh-tw', u'ja']
-# def try_translate(sent, lang):
-#     while True:
-#         try:
-#             return translator.translate(sent, lang)
-#         except Exception, e:
-
-#             sys.stderr.write(str(e)+'\n')
-#             time.sleep(3)
 
 if __name__ == '__main__':
-    client_id     = raw_input('enter your client id:')
-    client_secret = raw_input('enter your client secret:')
+    table         = json.load(open(sys.argv[1]))
+    client_id     = sys.argv[2]
+    client_secret = sys.argv[3]
     translator    = Translator(client_id, client_secret)
-    table         = json.load(open('patterns.json'))
     for key, val in table.iteritems():
         for pat in val[1:]:
             for col in pat[2]:
@@ -31,7 +22,10 @@ if __name__ == '__main__':
                     try:
                         sents += [ (lang.split('-')[0], translator.translate(sent, lang)) for lang in to_languages[1:] ]
                     except Exception, e:
+                        done = sum([ 1 for key, val in table.iteritems() for pat in val[1:] for col in pat[2] if type(col[-1])==dict])
+                        total = sum([ 1 for key, val in table.iteritems() for pat in val[1:] for col in pat[2]])
                         sys.stderr.write(str(e)+'\n')
+                        sys.stderr.write('total:{} done:{}\n'.format(total,done))
                         json.dump(table,open('new_patterns.json','w'))
                         sys.exit(0)
                     sents = dict(sents)
